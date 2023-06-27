@@ -3,7 +3,7 @@
 #include<iostream>
 #include <netinet/in.h>
 #include <cstring>
-int main(int ac, std::string av[]){
+int main(int ac, char **av){
     int port = 8080;
     int socketOption = 1;
     struct sockaddr_in address;
@@ -46,7 +46,7 @@ int main(int ac, std::string av[]){
         exit(errno);
     }
     // poll op. learn whether fd has a data or not
-    std::string input;
-    int valRead = recv(newSocket, &input, 1024, 0);
-    
+    char input[1024];
+    int valRead = recv(newSocket, input, 1024, 0);
+    std::cout << std::string(input) << std::endl;
 }

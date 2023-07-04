@@ -3,6 +3,33 @@
 #include<iostream>
 #include <netinet/in.h>
 #include <cstring>
+typedef int (*request_handler)(int clientFd, char *input, int inputLen);
+
+int setupSocket4(int port, request_handler handler){
+    int socketOption = 1;
+    struct sockaddr_in addrIn;
+    socklen_t addrLen = sizeof addrIn;
+    int socketFd = socket(AF_INET, SOCK_STREAM, 0);
+    if (socketFd < 0)
+        return -1;
+    if (setsockopt(socketFd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &socketOption, sizeof socketOption))
+        return -1;
+    addrIn.sin_family = AF_INET;
+    addrIn.sin_addr.s_addr = INADDR_ANY;
+    addrIn.sin_port = htons(port);
+    if (bind(socketFd, (struct sockaddr*) &addrIn, addrLen) < 0)
+        return -1;
+    if (listen(socketFd, 10))
+        return -1;
+    int clientFd;
+    while ((clientFd = accept(socketFd, (struct sockaddr*) &addrIn, &addrLen))){
+        char input[1024];
+        int readed = recv(clientFd, input, 1024, 0);
+        handler(clientFd, input, readed);
+    }
+
+}
+
 int main(int ac, char **av){
     int port = 8080;
     int socketOption = 1;
@@ -40,13 +67,15 @@ int main(int ac, char **av){
         std::cerr << "listen failed" << std::strerror(errno) << std::endl;
         exit(errno);
     }
-    int newSocket = accept(socketFd, (struct sockaddr*) &address, &addrlen);
-    if (newSocket < 0){
-        std::cerr << "listen failed" << std::strerror(errno) << std::endl;
-        exit(errno);
+    while (1){
+        int newSocket = accept(socketFd, (struct sockaddr*) &address, &addrlen);
+        if (newSocket < 0){
+            std::cerr << "listen failed" << std::strerror(errno) << std::endl;
+            exit(errno);
+        }
+        // poll op. learn whether fd has a data or not
+        char input[1024];
+        int valRead = recv(newSocket, input, 1024, 0);
+        std::cout << std::string(input) << std::endl;
     }
-    // poll op. learn whether fd has a data or not
-    char input[1024];
-    int valRead = recv(newSocket, input, 1024, 0);
-    std::cout << std::string(input) << std::endl;
 }
